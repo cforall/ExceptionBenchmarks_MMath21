@@ -1,0 +1,39 @@
+// Resume Across Fixup
+#include <clock.hfa>
+#include <fstream.hfa>
+#include <stdlib.hfa>
+
+void nounwind_fixup(unsigned int frames, void (*raised_rtn)(int &)) {
+	if (frames) {
+		nounwind_fixup(frames - 1, raised_rtn);
+		// "Always" false, but prevents recursion elimination.
+		if (-1 == frames) printf("~");
+	} else {
+		int fixup = 17;
+		raised_rtn(fixup);
+	}
+}
+
+int main(int argc, char * argv[]) {
+	unsigned int times = 1;
+	unsigned int total_frames = 1;
+	if (1 < argc) {
+		times = strto(argv[1], 0p, 10);
+	}
+	if (2 < argc) {
+		total_frames = strto(argv[2], 0p, 10);
+	}
+
+	// Closures at the top level are allowed to be true closures.
+	void raised(int & fixup) {
+		fixup = total_frames + 42;
+		if (total_frames == 42) printf("42");
+	}
+
+	Time start_time = timeHiRes();
+	for (unsigned int count = 0 ; count < times ; ++count) {
+		nounwind_fixup(total_frames, raised);
+	}
+	Time end_time = timeHiRes();
+	sout | "Run-Time (s): " | wd(0,1, (end_time - start_time)`ns / 1_000_000_000.);
+}

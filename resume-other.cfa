@@ -1,0 +1,43 @@
+// Resume Across Other Handler
+#include <clock.hfa>
+#include <exception.hfa>
+#include <fstream.hfa>
+#include <stdlib.hfa>									// strto
+
+exception empty_exception;
+vtable(empty_exception) empty_vt;
+exception not_raised_exception;
+
+void nounwind_other(unsigned int frames) {
+	if (frames) {
+		try {
+			nounwind_other(frames - 1);
+		} catchResume (not_raised_exception *) {
+			asm volatile ("# fixup block (stack)");
+		}
+	} else {
+		throwResume (empty_exception){&empty_vt};
+	}
+}
+
+int main(int argc, char * argv[]) {
+	unsigned int times = 1;
+	unsigned int total_frames = 1;
+	if (1 < argc) {
+		times = strto(argv[1], 0p, 10);
+	}
+	if (2 < argc) {
+		total_frames = strto(argv[2], 0p, 10);
+	}
+
+	Time start_time = timeHiRes();
+	for (int count = 0 ; count < times ; ++count) {
+		try {
+			nounwind_other(total_frames);
+		} catchResume (empty_exception *) {
+			asm volatile ("# fixup block (base)");
+		}
+	}
+	Time end_time = timeHiRes();
+	sout | "Run-Time (s): " | wd(0,1, (end_time - start_time)`ns / 1_000_000_000.);
+}

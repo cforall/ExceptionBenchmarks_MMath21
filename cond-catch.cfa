@@ -1,0 +1,33 @@
+// Conditional Match (or Re-Raise)
+#include <clock.hfa>
+#include <exception.hfa>
+#include <fstream.hfa>
+#include <stdlib.hfa>									// strto
+
+exception empty_exception;
+vtable(empty_exception) empty_vt;
+
+bool should_catch = false;
+
+int main(int argc, char * argv[]) {
+	unsigned int times = 1;
+	if (1 < argc) {
+		times = strto(argv[1], 0p, 10);
+	}
+	if (2 < argc) {
+		should_catch = (unsigned int)strto(argv[2], 0p, 2);
+	}
+
+	Time start_time = timeHiRes();
+	for (unsigned int count = 0 ; count < times ; ++count) {
+		try {
+			throw (empty_exception){&empty_vt};
+		} catch (empty_exception * exc ; should_catch) {
+			asm volatile ("# catch block (conditional)");
+		} catch (empty_exception * exc) {
+			asm volatile ("# catch block (unconditional)");
+		}
+	}
+	Time end_time = timeHiRes();
+	sout | "Run-Time (s): " | wd(0,1, (end_time - start_time)`ns / 1_000_000_000.);
+}

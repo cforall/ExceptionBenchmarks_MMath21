@@ -1,0 +1,47 @@
+// Throw Across Finally
+#include <clock.hfa>
+#include <exception.hfa>
+#include <fstream.hfa>
+#include <stdlib.hfa>									// strto
+
+exception empty_exception;
+vtable(empty_exception) empty_vt;
+
+unsigned int frames;									// use global because of gcc thunk problem
+
+void unwind_finally(unsigned int dummy) {
+	if (frames) {
+		frames -= 1;
+		try {
+			unwind_finally(42);
+		} finally {
+			asm volatile ("# finally block");
+		}
+	} else {
+		dummy = 42;
+		throw (empty_exception){&empty_vt};
+	}
+}
+
+int main(int argc, char * argv[]) {
+	unsigned int times = 1;
+	unsigned int total_frames = 1;
+	if (1 < argc) {
+		times = strto(argv[1], 0p, 10);
+	}
+	if (2 < argc) {
+		total_frames = strto(argv[2], 0p, 10);
+	}
+	frames = total_frames;
+
+	Time start_time = timeHiRes();
+	for (int count = 0 ; count < times ; ++count) {
+		try {
+			unwind_finally(42);
+		} catch (empty_exception *) {
+			asm volatile ("# catch block");
+		}
+	}
+	Time end_time = timeHiRes();
+	sout | "Run-Time (s): " | wd(0,1, (end_time - start_time)`ns / 1_000_000_000.);
+}

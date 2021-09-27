@@ -1,0 +1,30 @@
+// Cross a Try Statement With Finally Clause
+#include <clock.hfa>
+#include <exception.hfa>
+#include <fstream.hfa>
+#include <stdlib.hfa>									// strto
+
+exception not_raised_exception;
+vtable(not_raised_exception) not_vt;
+
+int main(int argc, char * argv[]) {
+	unsigned int times = 1;
+	volatile bool should_throw = false;
+	if (1 < argc) {
+		times = strto(argv[1], 0p, 10);
+	}
+
+	Time start_time = timeHiRes();
+	for (unsigned int count = 0 ; count < times ; ++count) {
+		try {
+			asm volatile ("# try block");
+			if (should_throw) {
+				throw (not_raised_exception){&not_vt};
+			}
+		} finally {
+			asm volatile ("# finally block");
+		}
+	}
+	Time end_time = timeHiRes();
+	sout | "Run-Time (s): " | wd(0,1, (end_time - start_time)`ns / 1_000_000_000.);
+}
